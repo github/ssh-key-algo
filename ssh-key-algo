@@ -1,0 +1,157 @@
+#!/bin/sh
+#
+# Run this script as "ssh-key-algo.sh git@github.com".  You can also specify a
+# different location if you'd like to run this against an GitHub Enterprise
+# Server instance.
+
+usage () {
+  echo "usage: ssh-key-algo [<user>@<hostname>]"
+  echo
+  echo "  Check the algorithm your ssh key for accessing a given host is"
+  echo "  using and make sure it's still going to be usable when insecure"
+  echo "  algorithms are being deprecated"
+  echo
+  echo "  Will check against git@github.com by default.  Specify a"
+  echo "  different location if you'd like to run this against an GitHub"
+  echo "  Enterprise Server instance."
+}
+
+DIR=$(mktemp -d -t tmp.XXXXXXX)
+trap 'rm -fr "$DIR"' EXIT
+
+host=git@github.com
+if [ $# -eq 1 ]
+then
+  if [ "$1" = "--help" ] || [ "$1" = "-h" ]
+  then
+    usage
+    exit 0
+  fi
+  host="$1"
+elif [ $# -gt 1 ]
+then
+  usage
+  exit 1
+fi
+
+echo "using: $(which ssh)"
+
+# Disable connection reuse because we can't parse the output if that happens.
+ssh -vvv -oControlMaster=no -oControlPath=no "$host" >"$DIR/output" 2>&1
+
+# Turn the OpenSSH version into one without dots.  For example, 7.2 becomes 72,
+# and 8.4 becomes 84.
+VERSION=$(grep "^OpenSSH_" "$DIR/output" | sed -e 's/^OpenSSH_\([0-9]*\)\.\([0-9]\).*/\1\2/')
+if [ "$VERSION" = "" ];
+then
+  echo "OpenSSH is not installed, can't determine key type."
+  exit 5
+fi
+
+grep "sign_and_send_pubkey" "$DIR/output" >"$DIR/processed"
+# This should be an algorithm like "rsa-sha2-512" or "ssh-ed25519".
+ALGO=$(grep "signing using" "$DIR/processed" | sed -e 's/^.*signing using \([a-z0-9-]*\).*/\1/')
+# This will be something like "RSA" or "ECDSA".
+KEYTYPE=$(grep -v "signing using" "$DIR/processed" | sed -e 's/^.*sign_and_send_pubkey: \([A-Za-z0-9]*\) .*/\1/')
+DENIED=$(grep "Permission denied (publickey)." "$DIR/output")
+
+if [ -z "$ALGO" ] && [ -n "$KEYTYPE" ]
+then
+  case "$KEYTYPE" in
+    RSA)
+      ALGO="ssh-rsa"
+      ;;
+    DSA|DSS)
+      ALGO="ssh-dss"
+      ;;
+    ECDSA)
+      # We don't know what type it is, but it's okay for us.
+      ALGO="ecdsa"
+      ;;
+    Ed25519|ED25519)
+      ALGO="ssh-ed25519"
+      ;;
+  esac
+fi
+
+if [ "$VERSION" -ge 65 ]
+then
+  # 6.5 was the first version to support Ed25519 keys.
+  KEYGEN="ssh-keygen -t ed25519"
+elif [ "$VERSION" -ge 57 ]
+then
+  # 5.7 was the first version to support ECDSA keys.
+  KEYGEN="ssh-keygen -t ecdsa"
+else
+  # This is an old version that doesn't offer any secure algorithms.  The OS
+  # probably is not receiving security updates, either.
+  :
+fi
+
+if [ -n "$ALGO" ]
+then
+  case "$ALGO" in
+    rsa-sha2-256|rsa-sha2-512)
+      printf "You're using an RSA key with SHA-2 (algorithm %s).  You're all set!\n" "$ALGO"
+      ;;
+    ssh-rsa)
+      printf "You're using an RSA key with SHA-1.\n"
+      if [ -z "$KEYGEN" ]
+      then
+        cat <<EOM
+This key will continue to work if it's already set up, but you should strongly
+consider generating a new key with the following command and using it instead:
+$KEYGEN
+If the key hasn't been set up by the deadline, you'll either need to generate a
+new one as listed above, or upgrade to OpenSSH 7.2 or newer.
+EOM
+      else
+        cat <<EOM
+It looks like your version of OpenSSH is too old to support any secure public
+key algorithms.  This key will continue to work if it's already set up, but you
+should strongly consider upgrading OpenSSH to version 7.2 or newer.  If the key
+hasn't been set up by the deadline, then you'll need to upgrade your version of
+OpenSSH to continue.
+EOM
+      fi
+      exit 2
+      ;;
+    ssh-dss)
+      printf "You're using a DSA key.\n"
+      if [ -z "$KEYGEN" ]
+      then
+        cat <<EOM
+This type of key isn't going to work in the future.  You should consider
+generating a new key with one of the following commands and using it instead.
+$KEYGEN
+EOM
+      else
+        cat <<EOM
+This type of key isn't going to work in the future, and it looks like your
+version of OpenSSH is too old to support any secure public key algorithms.  You
+should upgrade to version 7.2 or newer and run the following command to generate
+a new key:
+ssh-keygen -t ed25519
+EOM
+      fi
+      exit 3
+      ;;
+    ssh-ed25519)
+      printf "You're using an Ed25519 key.  You're all set!\n"
+      ;;
+    ecdsa)
+      printf "You're using an ECDSA key with SHA-2.  You're all set!\n"
+      ;;
+    ecdsa-*)
+      printf "You're using an ECDSA key with SHA-2 (algorithm %s).  You're all set!\n" "$ALGO"
+      ;;
+  esac
+else
+  if [ -n "$DENIED" ]
+  then
+    printf "Could not authenticate to $host, and could not understand your key type because of that.\n"
+  else
+    printf "Hmmm, either that didn't succeed or I couldn't understand your key type.\n"
+  fi
+  exit 4
+fi
