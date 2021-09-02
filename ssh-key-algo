@@ -96,7 +96,7 @@ then
       ;;
     ssh-rsa)
       printf "You're using an RSA key with SHA-1.\n"
-      if [ -z "$KEYGEN" ]
+      if [ -n "$KEYGEN" ]
       then
         cat <<EOM
 This key will continue to work if it's already set up, but you should strongly
@@ -118,7 +118,7 @@ EOM
       ;;
     ssh-dss)
       printf "You're using a DSA key.\n"
-      if [ -z "$KEYGEN" ]
+      if [ -n "$KEYGEN" ]
       then
         cat <<EOM
 This type of key isn't going to work in the future.  You should consider
