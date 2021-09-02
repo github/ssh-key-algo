@@ -47,9 +47,9 @@ fi
 
 grep "sign_and_send_pubkey" "$DIR/output" >"$DIR/processed"
 # This should be an algorithm like "rsa-sha2-512" or "ssh-ed25519".
-ALGO=$(grep "signing using" "$DIR/processed" | sed -e 's/^.*signing using \([a-z0-9-]*\).*/\1/')
+ALGO=$(sed -n -e 's/^.*signing using \([a-z0-9-]*\).*/\1/p' <"$DIR/processed")
 # This will be something like "RSA" or "ECDSA".
-KEYTYPE=$(grep -v "signing using" "$DIR/processed" | sed -e 's/^.*sign_and_send_pubkey: \([A-Za-z0-9]*\) .*/\1/')
+KEYTYPE=$(sed -n -e 's/^.*sign_and_send_pubkey: \([A-Za-z0-9]*\) .*:.*/\1/p' <"$DIR/processed")
 DENIED=$(grep "Permission denied (publickey)." "$DIR/output")
 
 if [ -z "$ALGO" ] && [ -n "$KEYTYPE" ]
