@@ -19,19 +19,16 @@ usage () {
 DIR=$(mktemp -d -t tmp.XXXXXXX)
 trap 'rm -fr "$DIR"' EXIT
 
-host=git@github.com
-if [ $# -eq 1 ]
-then
-  if [ "$1" = "--help" ] || [ "$1" = "-h" ]
-  then
-    usage
-    exit 0
-  fi
-  host="$1"
-elif [ $# -gt 1 ]
+host=${1:-"git@github.com"}
+if [ $# -gt 1 ]
 then
   usage
   exit 1
+fi
+if [ "$1" = "--help" ] || [ "$1" = "-h" ]
+then
+  usage
+  exit 0
 fi
 
 echo "using: $(which ssh)"
