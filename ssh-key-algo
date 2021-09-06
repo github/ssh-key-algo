@@ -20,7 +20,7 @@ DIR=$(mktemp -d -t tmp.XXXXXXX)
 trap 'rm -fr "$DIR"' EXIT
 
 host=${1:-"git@github.com"}
-if [ $# -gt 1 ]
+if [ "$#" -gt 1 ]
 then
   usage
   exit 1
@@ -39,7 +39,7 @@ ssh -vvv -oControlMaster=no -oControlPath=no "$host" >"$DIR/output" 2>&1
 # Turn the OpenSSH version into one without dots.  For example, 7.2 becomes 72,
 # and 8.4 becomes 84.
 VERSION=$(grep "^OpenSSH_" "$DIR/output" | sed -e 's/^OpenSSH_\([0-9]*\)\.\([0-9]\).*/\1\2/')
-if [ "$VERSION" = "" ];
+if [ -z "$VERSION" ];
 then
   echo "OpenSSH is not installed, can't determine key type."
   exit 5
