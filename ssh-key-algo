@@ -31,7 +31,7 @@ then
   exit 0
 fi
 
-echo "using: $(which ssh)"
+echo "using: $(command -v ssh)"
 
 # Disable connection reuse because we can't parse the output if that happens.
 ssh -vvv -oControlMaster=no -oControlPath=no "$host" >"$DIR/output" 2>&1
