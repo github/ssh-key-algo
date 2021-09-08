@@ -5,7 +5,7 @@
 # Server instance.
 
 usage () {
-  echo "usage: ssh-key-algo [<user>@<hostname>]"
+  echo "usage: ssh-key-algo [-i identity_file] [<user>@<hostname>]"
   echo
   echo "  Check the algorithm your ssh key for accessing a given host is"
   echo "  using and make sure it's still going to be usable when insecure"
@@ -18,6 +18,19 @@ usage () {
 
 DIR=$(mktemp -d -t tmp.XXXXXXX)
 trap 'rm -fr "$DIR"' EXIT
+
+if [ "$1" = "-i" ]
+then
+  if [ "$#" -ge 2 ]
+  then
+    identity="$2"
+    shift
+    shift
+  else
+    usage
+    exit 1
+  fi
+fi
 
 host=${1:-"git@github.com"}
 if [ "$#" -gt 1 ]
@@ -34,7 +47,7 @@ fi
 echo "using: $(command -v ssh)"
 
 # Disable connection reuse because we can't parse the output if that happens.
-ssh -vvv -oControlMaster=no -oControlPath=no "$host" >"$DIR/output" 2>&1
+ssh -vvv -oControlMaster=no -oControlPath=no ${identity:+-i "$identity"} "$host" >"$DIR/output" 2>&1
 
 # Turn the OpenSSH version into one without dots.  For example, 7.2 becomes 72,
 # and 8.4 becomes 84.
