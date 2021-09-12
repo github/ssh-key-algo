@@ -51,7 +51,7 @@ ssh -vvv -oControlMaster=no -oControlPath=no ${identity:+-i "$identity"} "$host"
 
 # Turn the OpenSSH version into one without dots.  For example, 7.2 becomes 72,
 # and 8.4 becomes 84.
-VERSION=$(grep "^OpenSSH_" "$DIR/output" | sed -e 's/^OpenSSH_\([0-9]*\)\.\([0-9]\).*/\1\2/')
+VERSION=$(sed -n -e 's/^OpenSSH_\([0-9]*\)\.\([0-9]\).*/\1\2/p' <"$DIR/output")
 if [ -z "$VERSION" ];
 then
   echo "OpenSSH is not installed, can't determine key type."
