@@ -24,8 +24,7 @@ then
   if [ "$#" -ge 2 ]
   then
     identity="$2"
-    shift
-    shift
+    shift 2
   else
     usage
     exit 1
