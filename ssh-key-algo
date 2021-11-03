@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Run this script as "ssh-key-algo.sh git@github.com".  You can also specify a
+# Run this script as "ssh-key-algo git@github.com".  You can also specify a
 # different location if you'd like to run this against an GitHub Enterprise
 # Server instance.
 
