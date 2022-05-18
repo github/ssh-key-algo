@@ -57,9 +57,10 @@ then
   exit 5
 fi
 
-grep "sign_and_send_pubkey" "$DIR/output" >"$DIR/processed"
+grep -E "sign_and_send_pubkey|Server accepts key" "$DIR/output" >"$DIR/processed"
 # This should be an algorithm like "rsa-sha2-512" or "ssh-ed25519".
 ALGO=$(sed -n -e 's/^.*signing using \([a-z0-9-]*\).*/\1/p' <"$DIR/processed")
+[ -z "$ALGO" ] && ALGO=$(sed -n -e 's/^.*Server accepts key: pkalg \([a-z0-9-]*\) blen.*/\1/p' <"$DIR/processed")
 # This will be something like "RSA" or "ECDSA".
 KEYTYPE=$(sed -n -e 's/^.*sign_and_send_pubkey: \([A-Za-z0-9]*\) .*:.*/\1/p' <"$DIR/processed")
 DENIED=$(grep "Permission denied (publickey)." "$DIR/output")
